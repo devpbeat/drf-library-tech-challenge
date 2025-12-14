@@ -3,15 +3,15 @@ services:
     image: postgres:15-alpine
     container_name: library_db
     environment:
-      POSTGRES_DB: library_db
-      POSTGRES_USER: library_user
-      POSTGRES_PASSWORD: library_password
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U library_user -d library_db"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -19,23 +19,20 @@ services:
   web:
     build: .
     container_name: library_web
-    command: >
-      sh -c "python manage.py migrate &&
-             python manage.py collectstatic --noinput &&
-             python manage.py runserver 0.0.0.0:8000"
+    entrypoint: /app/entrypoint.sh
     volumes:
       - .:/app
       - static_volume:/app/staticfiles
     ports:
       - "8000:8000"
+    env_file:
+      - .env
     environment:
-      - SECRET_KEY=django-insecure-dev-key-for-docker
-      - DEBUG=True
-      - DATABASE_NAME=library_db
-      - DATABASE_USER=library_user
-      - DATABASE_PASSWORD=library_password
-      - DATABASE_HOST=db
-      - DATABASE_PORT=5432
+      - DATABASE_NAME=${POSTGRES_DB}
+      - DATABASE_USER=${POSTGRES_USER}
+      - DATABASE_PASSWORD=${POSTGRES_PASSWORD}
+      - DATABASE_HOST=${DATABASE_HOST}
+      - DATABASE_PORT=${DATABASE_PORT}
     depends_on:
       db:
         condition: service_healthy
